@@ -1,9 +1,12 @@
 #input:
 # geneMapper output table
 # mapping file to match PCR number and sample name
+setwd("G:/MarMic15_ARISA_R")
+
+#save.image("MarMic15_ARISA.Rdata")
 
 #reading geneMapper output (export table), in Size column often NAs
-Data=read.table("fragments.txt",h=TRUE,fill=TRUE,sep="\t")
+Data=read.table("MarMic15_ARISA_frags.txt",h=TRUE,fill=TRUE,sep="\t")
 Data1=Data[,c("Sample.File.Name","Size","Area")] #selecting columns of interest
 Data2=Data1[!is.na(Data1$Size),] #removing NAs from Size column
 Data3=Data2[Data2$Size>=100 & Data2$Size<=1000,] #defining size range (redundant)
@@ -26,7 +29,7 @@ B_abs=Binned$BestFrame_abs
 all.equal(rownames(B),rownames(B_abs))
 
 #reading mapping file to match PCR number, i.e. rownames(B), with sample names (SID)
-SID0=read.table("SID_marmic.txt", h=TRUE) 
+SID0=read.table("SID.txt", h=TRUE) 
 head(SID0)
 PCR=as.numeric(sapply(as.character(rownames(B)),function(x){strsplit(x,"_")[[1]][2]}))
 SID=SID0[SID0$PCR %in% PCR,]
@@ -52,7 +55,7 @@ table(droplevels(M[failedPCR,"G"]))
 #visualization of min and max distance between replicate PCRs
 source("RepDist.R")
 distPCR=RepDist(M,max)
-hist(distPCR$DistRep[,1],breaks=30) #BC
+hist(distPCR$DistRep[,1],breaks=30,main="max dist among rep PCRs") #BC
 hist(distPCR$DistRep[,2]) #JC
 distPCR=RepDist(M,min)
 hist(distPCR$DistRep[,1],breaks=30) #BC
