@@ -15,16 +15,16 @@ Data  <- read.table(
 
 
 #selecting columns of interest
-Data1 <- Data[,c("Sample.File.Name","Size","Area")] 
+Data1 <- Data[ , c("Sample.File.Name","Size","Area")] 
 
 #removing NAs from Size column
 Data2 <- Data1[!is.na(Data1$Size),] 
 
 #defining size range (redundant)
-Data3 <- Data2[Data2$Size >= 100 & Data2$Size <= 1000,] 
+Data3 <- Data2[Data2$Size >= 100 & Data2$Size <= 1000, ] 
 
 #shortening the names of the samples
-ShortNames<-as.character(
+ShortNames <- as.character(
   sapply(
     as.character(Data3$Sample.File.Name),
     function(x){
@@ -37,22 +37,36 @@ Data4 <- Data3
 Data4$Sample.File.Name <- ShortNames
 
 head(Data4)
+tail(Data4)
 
 write.table(Data4,"for_binning.txt")
 
-#binning
+# binning, using a script that was written by
+# A. Ramette to bin ARISA data.
 source("interactive_binner v1.4_abs.r")
-Binned <- interactivebinner(Data4,absolute=T) #absolute option also outputs the raw peak area values per bin
+
+Binned <- interactivebinner(
+  Data4,
+  absolute = T # absolute option also outputs 
+               # the raw peak area values per bin
+  ) 
 
 B <- Binned$BestFrame
 B_abs <- Binned$BestFrame_abs
 all.equal(rownames(B),rownames(B_abs))
 
 #reading mapping file to match PCR number, i.e. rownames(B), with sample names (SID)
-SID0 <- read.table("SID.txt", h=TRUE) 
+SID0 <- read.table("SID.txt", h = TRUE) 
 head(SID0)
-PCR <- as.numeric(sapply(as.character(rownames(B)),function(x){strsplit(x,"_")[[1]][2]}))
-SID <- SID0[SID0$PCR %in% PCR,]
+
+PCR <- as.numeric(
+  sapply(as.character(rownames(B)),
+         function(x){strsplit(x,"_")[[1]][2]}
+         )
+  )
+
+SID <- SID0[SID0$PCR %in% PCR, ]
+
 SID <- SID[match(PCR,SID$PCR),]
 
 #formating input for merging
@@ -60,8 +74,12 @@ M <- data.frame(B,G = SID$SID)
 M_abs <- data.frame(B_abs,G = SID$SID)
 
 #quality control
+# If you don't have vegan installed, run the following:
+# install.packages("vegan")
 require(vegan)
 
+# we can use NMDS to see if the dissimilarity structure
+# in our data makes sense, or if we have some explaining to do...
 #visual check: negative controls are expected to form halo around samples
 NMDS_M <- metaMDS(M[,-ncol(M)])
 plot(NMDS_M, display = "sites")
@@ -69,14 +87,16 @@ plot(NMDS_M, display = "sites")
 identify(
   NMDS_M$points[,1],
   NMDS_M$points[,2],
-  labels=M[,ncol(M)]
+  labels = M[,ncol(M)]
   ) #interactive selection of point to print label
 
 #selection of replicate PCRs which are more than a certain cut-off dissimilar from the other replicate PCRs
 #Bray_Curtis dissimilarity of <= 0.4 acceptable among replicate PCRs
 source("findFailedPCR.R")
 
-failedPCR <- findFailed(M,0.4)
+# 0.4 was empirically determined by CH following over
+# 1000 replicate PCRs
+failedPCR <- findFailed(M, 0.4)
 
 table(
   droplevels(M[failedPCR,"G"])
@@ -84,19 +104,19 @@ table(
 
 #visualization of min and max distance between replicate PCRs
 source("RepDist.R")
-distPCR <- RepDist(M,max)
+distPCR <- RepDist(M, max)
 
 hist(
   distPCR$DistRep[,1],
   breaks=30,
   main="max dist among rep PCRs"
-  ) #BC
+  ) # Bray-Curtis dissimilarity (quantitative)
 
 hist(
   distPCR$DistRep[,2]
-  ) #JC
+  ) # Jaccard (pres/abs)
 
-distPCR <- RepDist(M,min)
+distPCR <- RepDist(M, min)
 
 hist(distPCR$DistRep[,1],breaks=30) #BC
 hist(distPCR$DistRep[,2]) #JC
@@ -112,9 +132,9 @@ M1_abs <- M_abs[!rownames(M_abs) %in% failedPCR,]
 #merging replicate PCRs into 1 sample
 #OTU must be present in at least 2 replicate PCRs
 source("replicate_merger_ALk_consensus_RFI 1.2.r") #mean of proportions
-Merged <- Merging_ALk(M1,k=2)
+Merged <- Merging_ALk(M1, k = 2)
 source("replicate_merger_ALk_consensus_RFI 1.2_sum.r") #sum of raw peak area
-Merged_abs <- Merging_ALk(M1_abs,k=2)
+Merged_abs <- Merging_ALk(M1_abs, k = 2)
 
 write.table(Merged, "Merged_prop.txt", sep="\t", quote = F) #OTUs as proportions/percentages of total peak area
 write.table(Merged_abs, "Merged_abs.txt", sep="\t",quote = F) #OTUs as absolute peak area
