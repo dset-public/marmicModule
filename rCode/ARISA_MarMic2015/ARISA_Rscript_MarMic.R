@@ -1,7 +1,7 @@
 #input:
 # geneMapper output table
 # mapping file to match PCR number and sample name
-setwd("G:/MarMic15_ARISA_R")
+setwd("D:/myTeaching/marmicDsetPublic/trunk/rCode/ARISA_MarMic2015/")
 
 #save.image("MarMic15_ARISA.Rdata")
 
